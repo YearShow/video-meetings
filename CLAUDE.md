@@ -6,7 +6,7 @@
 
 - `apps/web` — Next.js 16 (App Router, TypeScript, Tailwind 4). См. `apps/web/CLAUDE.md`.
 - `apps/api` — Nest.js 12 (TypeScript strict, Vitest, oxlint). См. `apps/api/CLAUDE.md`.
-- `docker-compose.yml` — локальная инфраструктура: PostgreSQL 17 (`docker compose up -d postgres`). Параметры задаются через переменные `POSTGRES_*` (пример в `.env.example`, значения по умолчанию подходят для разработки). Для `apps/api` там же `DATABASE_URL` и `JWT_SECRET` (копируются в `apps/api/.env`).
+- `docker-compose.yml` — локальная инфраструктура: PostgreSQL 17 (`docker compose up -d postgres`). Параметры задаются через переменные `POSTGRES_*` (пример в `.env.example`, значения по умолчанию подходят для разработки). Для `apps/api` там же `DATABASE_URL`, `JWT_SECRET` и `PORT` (4000; `web` работает на 3000) (копируются в `apps/api/.env`).
 - `.agents/skills` — установленные скиллы для агентов (источники и хэши в `skills-lock.json`). В Claude Code они подключены симлинками из `.claude/skills/`. Не редактируйте вручную: обновляйте через установщик скиллов. Исключены из Prettier (`.prettierignore`).
 
 ## Требования
