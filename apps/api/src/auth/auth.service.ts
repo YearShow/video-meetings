@@ -11,6 +11,11 @@ export interface AuthTokens {
   accessToken: string;
 }
 
+export interface AuthProfile {
+  id: string;
+  email: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -39,6 +44,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.issueToken(user.id);
+  }
+
+  async me(userId: string): Promise<AuthProfile> {
+    const user = await this.users.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return { id: user.id, email: user.email };
   }
 
   private async issueToken(userId: string): Promise<AuthTokens> {

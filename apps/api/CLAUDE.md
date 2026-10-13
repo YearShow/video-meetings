@@ -19,9 +19,9 @@
 
 - `src/prisma` — глобальный `PrismaModule` / `PrismaService` (Prisma 7 + драйвер-адаптер `@prisma/adapter-pg`). Схема — `prisma/schema.prisma`, миграции — `prisma/migrations`, конфиг — `prisma.config.ts`. Клиент генерируется в `src/generated/prisma` (в git не коммитится).
 - `src/users` — `UsersService` (поиск и создание пользователей).
-- `src/auth` — `POST /auth/register` (201) и `POST /auth/login` (200), оба возвращают `{ accessToken }` (JWT, `sub` = id пользователя, срок 1 час). Пароли хэшируются через argon2, email нормализуется в нижний регистр. Неверный логин или пароль — одинаковый 401. Валидация — глобальный `ValidationPipe` через `APP_PIPE` в `AppModule` (чтобы работала и в e2e).
+- `src/auth` — `POST /auth/register` (201) и `POST /auth/login` (200), оба возвращают `{ accessToken }`, и `GET /auth/me` (под `JwtAuthGuard`, возвращает `{ id, email }` текущего пользователя) (JWT, `sub` = id пользователя, срок 1 час). Пароли хэшируются через argon2, email нормализуется в нижний регистр. Неверный логин или пароль — одинаковый 401. Валидация — глобальный `ValidationPipe` через `APP_PIPE` в `AppModule` (чтобы работала и в e2e).
 - `src/meetings` — встречи: `POST /meetings` (201), `GET /meetings`, `GET /meetings/:id` (404, если встречи нет или она чужая). Все эндпоинты закрыты `JwtAuthGuard` (из `src/auth`, текущий пользователь — декоратор `@CurrentUser()`). Встреча принадлежит создателю (`ownerId`); `participants` — массив email. Реализовано по CQRS, см. ниже.
-- Конфигурация через `@nestjs/config`: `apps/api/.env` (не коммитится, пример — в корневом `.env.example`), переменные `DATABASE_URL` и `JWT_SECRET` обязательны.
+- Конфигурация через `@nestjs/config`: `apps/api/.env` (не коммитится, пример — в корневом `.env.example`), переменные `DATABASE_URL` и `JWT_SECRET` обязательны; `PORT` необязателен (по умолчанию 4000, порт 3000 занимает `web`).
 - e2e-тесты ходят в реальную БД из Docker Compose: перед запуском `docker compose up -d postgres` и `npm run db:deploy`.
 
 ## CQRS

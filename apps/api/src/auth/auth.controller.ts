@@ -1,4 +1,14 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentUser } from './current-user.decorator.js';
+import { JwtAuthGuard, type AuthUser } from './jwt-auth.guard.js';
 import { LoginDto, RegisterDto } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 
@@ -15,5 +25,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.email, dto.password);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  me(@CurrentUser() user: AuthUser) {
+    return this.auth.me(user.id);
   }
 }

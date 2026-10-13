@@ -209,4 +209,24 @@ describe('Auth (e2e)', () => {
       await login(body).expect(400);
     });
   });
+
+  describe('GET /auth/me', () => {
+    it('возвращает id и email текущего пользователя без хэша пароля', async () => {
+      const email = uniqueEmail();
+      const { body } = await register({ email, password: PASSWORD }).expect(
+        201,
+      );
+
+      const res = await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${body.accessToken}`)
+        .expect(200);
+
+      expect(res.body).toEqual({ id: expect.any(String), email });
+    });
+
+    it('возвращает 401 без токена', async () => {
+      await request(app.getHttpServer()).get('/auth/me').expect(401);
+    });
+  });
 });
