@@ -30,6 +30,10 @@
 - `.editorconfig`: LF, отступ 2 пробела, финальный перевод строки.
 - Линтеры у проектов разные: ESLint в `web`, oxlint в `api`.
 
+## Git-хуки
+
+Husky (`.husky/`, подключается скриптом `prepare` при `npm install`). Хук `pre-commit` запускает `npm run lint` и `npm run test`; если что-то падает, коммит отменяется. Не обходите хук через `--no-verify`. e2e-тесты `api` в хук не входят (нужна БД).
+
 ## Перед завершением задачи
 
 Прогоните `npm run lint`, `npm run typecheck`, `npm run test` и `npm run format:check`.
