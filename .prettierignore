@@ -5,3 +5,5 @@ coverage
 package-lock.json
 *.ico
 next-env.d.ts
+.agents
+.claude/skills

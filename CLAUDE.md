@@ -6,6 +6,7 @@
 
 - `apps/web` — Next.js 16 (App Router, TypeScript, Tailwind 4). См. `apps/web/CLAUDE.md`.
 - `apps/api` — Nest.js 12 (TypeScript strict, Vitest, oxlint). См. `apps/api/CLAUDE.md`.
+- `.agents/skills` — установленные скиллы для агентов (источники и хэши в `skills-lock.json`). В Claude Code они подключены симлинками из `.claude/skills/`. Не редактируйте вручную: обновляйте через установщик скиллов. Исключены из Prettier (`.prettierignore`).
 
 ## Требования
 
