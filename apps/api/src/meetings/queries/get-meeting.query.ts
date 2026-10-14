@@ -3,7 +3,7 @@ import type { MeetingView } from '../meeting.view.js';
 
 export class GetMeetingQuery extends Query<MeetingView> {
   constructor(
-    public readonly ownerId: string,
+    public readonly userId: string,
     public readonly meetingId: string,
   ) {
     super();

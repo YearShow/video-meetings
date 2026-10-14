@@ -40,7 +40,10 @@ export class CreateMeetingHandler implements ICommandHandler<CreateMeetingComman
         title: command.title,
         date: command.date,
         participants: {
-          create: users.map((u) => ({ userId: u.id, email: u.email })),
+          // Владелец уже имеет доступ как создатель, отдельной строкой он не нужен.
+          create: users
+            .filter((u) => u.id !== command.ownerId)
+            .map((u) => ({ userId: u.id, email: u.email })),
         },
       },
       include: meetingInclude,

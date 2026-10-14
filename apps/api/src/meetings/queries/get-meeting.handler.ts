@@ -21,7 +21,7 @@ export class GetMeetingHandler implements IQueryHandler<GetMeetingQuery> {
     const meeting = await this.prisma.meeting.findFirst({
       where: {
         id: query.meetingId,
-        ...this.access.accessibleBy(query.ownerId),
+        ...this.access.accessibleBy(query.userId),
       },
       include: meetingInclude,
     });

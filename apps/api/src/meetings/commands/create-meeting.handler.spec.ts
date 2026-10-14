@@ -85,6 +85,21 @@ describe('CreateMeetingHandler', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it('не добавляет владельца в участники, если он указал свой email', async () => {
+    findMany.mockResolvedValue([
+      { id: 'owner-id', email: 'owner@example.com' },
+      { id: 'u1', email: 'alice@example.com' },
+    ]);
+
+    const view = await handler.execute(
+      command(['owner@example.com', 'alice@example.com']),
+    );
+
+    expect(view.participants).toEqual([
+      { userId: 'u1', email: 'alice@example.com' },
+    ]);
+  });
+
   it('создаёт встречу без участников и не обращается к таблице пользователей', async () => {
     const view = await handler.execute(command([]));
 

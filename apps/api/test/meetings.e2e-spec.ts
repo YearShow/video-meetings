@@ -106,6 +106,20 @@ describe('Meetings (e2e)', () => {
       ]);
     });
 
+    it('не добавляет владельца в участники, если он указал свой email', async () => {
+      const owner = await createUser();
+      const alice = await createUser();
+
+      const res = await createMeeting(
+        owner.token,
+        validMeeting([owner.email, alice.email]),
+      ).expect(201);
+
+      expect(res.body.participants).toEqual([
+        { email: alice.email, userId: alice.userId },
+      ]);
+    });
+
     it('возвращает 400 и не создаёт встречу, если у участника нет аккаунта', async () => {
       const token = await createUserToken();
       const alice = await createUser();

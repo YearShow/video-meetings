@@ -17,7 +17,7 @@ export class GetMeetingsHandler implements IQueryHandler<GetMeetingsQuery> {
 
   async execute(query: GetMeetingsQuery): Promise<MeetingView[]> {
     const meetings = await this.prisma.meeting.findMany({
-      where: this.access.accessibleBy(query.ownerId),
+      where: this.access.accessibleBy(query.userId),
       include: meetingInclude,
       orderBy: { date: 'asc' },
     });
