@@ -26,9 +26,7 @@ async function MeetingContent({ params }: PageProps<'/meetings/[id]'>) {
           Участников: {meeting.participants.length}
         </p>
       </header>
-      {filesResult.ok ? (
-        <MeetingFiles meetingId={id} files={filesResult.files} />
-      ) : null}
+      <MeetingFiles meetingId={id} result={filesResult} />
     </>
   );
 }

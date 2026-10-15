@@ -16,7 +16,9 @@ const file = (over: Partial<MeetingFile> = {}): MeetingFile => ({
 
 describe('MeetingFiles: список', () => {
   it('показывает имя, размер, дату и автора', () => {
-    render(<MeetingFiles meetingId="m1" files={[file()]} />);
+    render(
+      <MeetingFiles meetingId="m1" result={{ ok: true, files: [file()] }} />,
+    );
     const item = screen.getByRole('listitem');
     expect(within(item).getByText('отчёт.pdf')).toBeInTheDocument();
     expect(item).toHaveTextContent(/1,5\s*КБ/);
@@ -32,10 +34,13 @@ describe('MeetingFiles: список', () => {
     render(
       <MeetingFiles
         meetingId="m1"
-        files={[
-          file({ id: 'a', name: 'a.txt' }),
-          file({ id: 'b', name: 'b.txt' }),
-        ]}
+        result={{
+          ok: true,
+          files: [
+            file({ id: 'a', name: 'a.txt' }),
+            file({ id: 'b', name: 'b.txt' }),
+          ],
+        }}
       />,
     );
     const items = screen.getAllByRole('listitem');
@@ -46,8 +51,32 @@ describe('MeetingFiles: список', () => {
   });
 
   it('показывает пустое состояние', () => {
-    render(<MeetingFiles meetingId="m1" files={[]} />);
+    render(<MeetingFiles meetingId="m1" result={{ ok: true, files: [] }} />);
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     expect(screen.getByText('Файлов пока нет.')).toBeInTheDocument();
+  });
+});
+
+describe('MeetingFiles: ошибки', () => {
+  it('сообщает об отсутствии доступа (403/404)', () => {
+    render(
+      <MeetingFiles
+        meetingId="m1"
+        result={{ ok: false, reason: 'forbidden' }}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('нет доступа');
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.queryByText('Файлов пока нет.')).not.toBeInTheDocument();
+  });
+
+  it('сообщает о сбое загрузки списка (сеть, 5xx)', () => {
+    render(
+      <MeetingFiles
+        meetingId="m1"
+        result={{ ok: false, reason: 'unavailable' }}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить');
   });
 });
