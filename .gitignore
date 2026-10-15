@@ -15,3 +15,6 @@ apps/api/src/generated
 
 # Локальное хранилище файлов встреч
 apps/api/storage/
+
+# Модели Whisper (скачиваются вручную, см. README)
+/models/

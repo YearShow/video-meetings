@@ -108,7 +108,10 @@ cp "$input" "$last"
     process.env.FILES_DIR = path.join(workDir, 'files');
     process.env.FFMPEG_BIN = ffmpeg;
     process.env.WHISPER_BIN = bin;
-    process.env.WHISPER_MODEL_PATH = '/models/ggml-base.bin';
+    // Подставной whisper модель не читает, но runner проверяет, что файл существует.
+    const model = path.join(workDir, 'ggml-base.bin');
+    await writeFile(model, '');
+    process.env.WHISPER_MODEL_PATH = model;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],

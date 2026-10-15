@@ -39,6 +39,22 @@ npm run dev                               # web :3000, api :4000
 
 `docker compose up -d --build api` запускает api в контейнере (миграции применяются при старте, `JWT_SECRET` обязателен). Файлы лежат в именованном volume `api_files` (`/data/files`) и переживают пересоздание контейнера; удалить их можно только вместе с volume (`docker compose down -v`). Не запускайте контейнер одновременно с `npm run dev:api`: порт 4000 общий.
 
+## Транскрибация (Whisper)
+
+mp3 и mp4, загруженные во встречу, автоматически расшифровываются локальным whisper.cpp (модель `base`, язык русский); данные не уходят во внешние сервисы. Модель в репозитории не хранится.
+
+**В Docker.** Образ `api` уже содержит `whisper-cli` (собирается из исходников, первая сборка занимает несколько минут) и `ffmpeg`. Нужно только положить модель в `./models` (или в каталог из `WHISPER_MODELS_DIR`) и запустить:
+
+```bash
+mkdir -p models
+curl -L -o models/ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+docker compose up -d --build api
+```
+
+Без модели файл получит статус «Ошибка: Файл модели Whisper не найден», после добавления модели его можно перезапустить кнопкой «Повторить».
+
+**Локально (macOS).** `brew install whisper-cpp ffmpeg`, модель скачайте так же, в `apps/api/.env` задайте абсолютный `WHISPER_MODEL_PATH`.
+
 ## Проверки
 
 ```bash
