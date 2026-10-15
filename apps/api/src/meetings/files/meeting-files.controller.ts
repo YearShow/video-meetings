@@ -19,6 +19,7 @@ import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthUser } from '../../auth/jwt-auth.guard.js';
 import { FileTooLargeError } from '../../storage/file-storage.js';
 import { MeetingAccessGuard } from '../meeting-access.guard.js';
+import { RetryTranscriptionCommand } from './commands/retry-transcription.command.js';
 import { UploadMeetingFileCommand } from './commands/upload-meeting-file.command.js';
 import type { MeetingFileView } from './file.view.js';
 import { CreateDownloadLinkQuery } from './queries/create-download-link.query.js';
@@ -56,6 +57,19 @@ export class MeetingFilesController {
   ): Promise<{ url: string }> {
     return this.queryBus.execute(
       new CreateDownloadLinkQuery(user.id, meetingId, fileId),
+    );
+  }
+
+  // Повторный запуск транскрибации после ошибки (409, если файл не в статусе ERROR).
+  @Post(':fileId/transcription/retry')
+  @HttpCode(200)
+  retryTranscription(
+    @CurrentUser() user: AuthUser,
+    @Param('meetingId') meetingId: string,
+    @Param('fileId') fileId: string,
+  ): Promise<MeetingFileView> {
+    return this.commandBus.execute(
+      new RetryTranscriptionCommand(user.id, meetingId, fileId),
     );
   }
 

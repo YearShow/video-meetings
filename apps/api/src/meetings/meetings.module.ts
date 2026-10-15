@@ -3,6 +3,8 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { AuthModule } from '../auth/auth.module.js';
 import { CreateMeetingHandler } from './commands/create-meeting.handler.js';
 import { StorageModule } from '../storage/storage.module.js';
+import { TranscriptionModule } from '../transcription/transcription.module.js';
+import { RetryTranscriptionHandler } from './files/commands/retry-transcription.handler.js';
 import { UploadMeetingFileHandler } from './files/commands/upload-meeting-file.handler.js';
 import { GetMeetingFilesHandler } from './files/queries/get-meeting-files.handler.js';
 import { MeetingFilesController } from './files/meeting-files.controller.js';
@@ -20,7 +22,7 @@ import { GetMeetingHandler } from './queries/get-meeting.handler.js';
 import { GetMeetingsHandler } from './queries/get-meetings.handler.js';
 
 @Module({
-  imports: [CqrsModule, AuthModule, StorageModule],
+  imports: [CqrsModule, AuthModule, StorageModule, TranscriptionModule],
   controllers: [
     MeetingsController,
     MeetingFilesController,
@@ -33,6 +35,7 @@ import { GetMeetingsHandler } from './queries/get-meetings.handler.js';
     DownloadTokenService,
     DownloadTokenGuard,
     UploadMeetingFileHandler,
+    RetryTranscriptionHandler,
     DeleteMeetingFilesHandler,
     CreateDownloadLinkHandler,
     GetMeetingFileContentHandler,

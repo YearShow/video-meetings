@@ -120,6 +120,7 @@ describe('Meeting files upload (e2e)', () => {
         status: 'UPLOADED',
         createdAt: expect.any(String),
         uploadedBy: { id: expect.any(String), email: owner.email },
+        transcription: null,
       });
       expect(JSON.stringify(res.body)).not.toContain('storageKey');
       expect(await storedFiles()).toContain(`${meetingId}/${res.body.id}`);
@@ -329,6 +330,7 @@ describe('Meeting files upload (e2e)', () => {
         status: 'UPLOADED',
         createdAt: expect.any(String),
         uploadedBy: { id: expect.any(String), email: owner.email },
+        transcription: null,
       });
       expect(JSON.stringify(res.body)).not.toContain('storageKey');
     });

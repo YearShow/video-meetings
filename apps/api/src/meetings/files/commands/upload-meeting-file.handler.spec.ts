@@ -6,6 +6,7 @@ import {
   FileTooLargeError,
   type FileStorage,
 } from '../../../storage/file-storage.js';
+import type { TranscriptionService } from '../../../transcription/transcription.service.js';
 import type { MeetingAccessService } from '../../meeting-access.service.js';
 import { UploadMeetingFileCommand } from './upload-meeting-file.command.js';
 import { UploadMeetingFileHandler } from './upload-meeting-file.handler.js';
@@ -15,11 +16,13 @@ describe('UploadMeetingFileHandler', () => {
   const create = vi.fn();
   const save = vi.fn();
   const del = vi.fn();
+  const enqueue = vi.fn();
   const handler = new UploadMeetingFileHandler(
     { meetingFile: { create } } as unknown as PrismaService,
     { hasAccess } as unknown as MeetingAccessService,
     { get: () => '1000' } as unknown as ConfigService,
     { save, delete: del } as unknown as FileStorage,
+    { enqueue } as unknown as TranscriptionService,
   );
 
   const content = () => Readable.from([Buffer.from('data')]);
@@ -37,6 +40,9 @@ describe('UploadMeetingFileHandler', () => {
         status: 'UPLOADED',
         createdAt: new Date('2030-01-01T00:00:00Z'),
         uploadedBy: { id: 'u1', email: 'u1@example.com' },
+        transcription: data.transcription
+          ? { status: 'QUEUED', progress: 0, text: null, error: null }
+          : null,
       }),
     );
   });
@@ -68,7 +74,55 @@ describe('UploadMeetingFileHandler', () => {
       status: 'UPLOADED',
       createdAt: new Date('2030-01-01T00:00:00Z'),
       uploadedBy: { id: 'u1', email: 'u1@example.com' },
+      transcription: null,
     });
+  });
+
+  it('для mp3 создаёт транскрибацию и ставит файл в очередь, не дожидаясь её', async () => {
+    const view = await handler.execute(
+      new UploadMeetingFileCommand(
+        'u1',
+        'm1',
+        'Запись.MP3',
+        'audio/mpeg',
+        content(),
+      ),
+    );
+
+    expect(create.mock.calls[0][0].data.transcription).toEqual({ create: {} });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledWith(view.id);
+    expect(view.transcription).toEqual({
+      status: 'QUEUED',
+      progress: 0,
+      text: null,
+      error: null,
+    });
+  });
+
+  it('для файлов других форматов транскрибацию не создаёт', async () => {
+    const view = await handler.execute(command());
+
+    expect(create.mock.calls[0][0].data.transcription).toBeUndefined();
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(view.transcription).toBeNull();
+  });
+
+  it('не ставит в очередь, если запись в БД не создалась', async () => {
+    create.mockRejectedValue(new Error('db down'));
+
+    await expect(
+      handler.execute(
+        new UploadMeetingFileCommand(
+          'u1',
+          'm1',
+          'a.mp3',
+          'audio/mpeg',
+          content(),
+        ),
+      ),
+    ).rejects.toThrow('db down');
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('не использует имя от пользователя в ключе хранилища', async () => {
