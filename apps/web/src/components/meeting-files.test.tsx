@@ -7,6 +7,8 @@ import { MeetingFiles } from './meeting-files';
 vi.mock('@/app/meetings/[id]/actions', () => ({
   getDownloadLink: vi.fn(),
   getUploadCredentials: vi.fn(),
+  refreshMeetingFiles: vi.fn(),
+  retryTranscription: vi.fn(),
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -16,6 +18,7 @@ const file = (over: Partial<MeetingFile> = {}): MeetingFile => ({
   size: 1536,
   createdAt: '2026-03-05T09:30:00.000Z',
   uploadedBy: { id: 'u1', email: 'anna@example.com' },
+  transcription: null,
   ...over,
 });
 
