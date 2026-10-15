@@ -53,3 +53,13 @@ export async function getMeetings(): Promise<Meeting[]> {
   }
   return res.json();
 }
+
+// null — встречи нет или она недоступна пользователю.
+export async function getMeeting(id: string): Promise<Meeting | null> {
+  const res = await apiFetch(`/meetings/${encodeURIComponent(id)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`GET /meetings/:id failed: ${res.status}`);
+  }
+  return res.json();
+}

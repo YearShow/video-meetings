@@ -1,4 +1,5 @@
 import { Button, Card, Skeleton } from '@heroui/react';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { getMeetings, getProfile, type Meeting } from '@/lib/meetings';
 import { CreateMeetingDialog } from '@/components/create-meeting-dialog';
@@ -67,7 +68,12 @@ async function HomeContent() {
               <ul className="flex flex-col divide-y divide-separator">
                 {latest.map((m) => (
                   <li key={m.id} className="flex flex-col gap-0.5 py-3">
-                    <span className="font-medium break-words">{m.title}</span>
+                    <Link
+                      href={`/meetings/${m.id}`}
+                      className="inline-flex min-h-11 items-center font-medium break-words underline-offset-2 hover:underline"
+                    >
+                      {m.title}
+                    </Link>
                     <time dateTime={m.date} className="text-sm text-muted">
                       {dateFormat.format(new Date(m.date))}
                     </time>
