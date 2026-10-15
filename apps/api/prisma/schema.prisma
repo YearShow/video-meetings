@@ -17,6 +17,7 @@ model User {
   updatedAt      DateTime             @updatedAt @map("updated_at")
   meetings       Meeting[]
   participations MeetingParticipant[]
+  uploadedFiles  MeetingFile[]
 
   @@map("users")
 }
@@ -28,6 +29,7 @@ model Meeting {
   ownerId      String               @map("owner_id")
   owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   participants MeetingParticipant[]
+  files        MeetingFile[]
   createdAt    DateTime             @default(now()) @map("created_at")
 
   @@index([ownerId])
@@ -47,4 +49,27 @@ model MeetingParticipant {
   @@unique([meetingId, userId])
   @@index([userId])
   @@map("meeting_participants")
+}
+
+enum MeetingFileStatus {
+  UPLOADED
+}
+
+// Файл, загруженный в встречу. Само содержимое лежит в хранилище по storageKey
+// (ключ строит сервер, имя от пользователя в путь не попадает).
+model MeetingFile {
+  id           String            @id @default(uuid(7))
+  meetingId    String            @map("meeting_id")
+  meeting      Meeting           @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  uploadedById String            @map("uploaded_by_id")
+  uploadedBy   User              @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  originalName String            @map("original_name")
+  mimeType     String            @map("mime_type")
+  sizeBytes    Int               @map("size_bytes")
+  storageKey   String            @unique @map("storage_key")
+  status       MeetingFileStatus @default(UPLOADED)
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  @@index([meetingId, createdAt])
+  @@map("meeting_files")
 }
