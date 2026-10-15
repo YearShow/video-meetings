@@ -43,7 +43,10 @@ function MeetingSkeleton() {
 export default function MeetingPage(props: PageProps<'/meetings/[id]'>) {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-      <Link href="/" className="text-sm text-muted underline">
+      <Link
+        href="/"
+        className="inline-flex min-h-11 items-center self-start text-sm text-muted underline"
+      >
         ← Все встречи
       </Link>
       <Suspense fallback={<MeetingSkeleton />}>

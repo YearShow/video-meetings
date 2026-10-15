@@ -70,7 +70,7 @@ async function HomeContent() {
                   <li key={m.id} className="flex flex-col gap-0.5 py-3">
                     <Link
                       href={`/meetings/${m.id}`}
-                      className="font-medium break-words underline-offset-2 hover:underline"
+                      className="inline-flex min-h-11 items-center font-medium break-words underline-offset-2 hover:underline"
                     >
                       {m.title}
                     </Link>
