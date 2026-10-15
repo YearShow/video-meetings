@@ -3,9 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { getDownloadLink } from '@/app/meetings/[id]/actions';
 import type { MeetingFile } from '@/lib/files';
+import { DEFAULT_MAX_UPLOAD_BYTES } from '@/lib/upload';
 import { MeetingFiles } from './meeting-files';
 
-vi.mock('@/app/meetings/[id]/actions', () => ({ getDownloadLink: vi.fn() }));
+vi.mock('@/app/meetings/[id]/actions', () => ({
+  getDownloadLink: vi.fn(),
+  getUploadCredentials: vi.fn(),
+}));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const files: MeetingFile[] = ['a.txt', 'b.txt'].map((name, i) => ({
   id: `f${i}`,
@@ -18,7 +23,13 @@ const files: MeetingFile[] = ['a.txt', 'b.txt'].map((name, i) => ({
 function setup() {
   vi.mocked(getDownloadLink).mockResolvedValue({ url: 'http://api.test/x' });
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-  render(<MeetingFiles meetingId="m1" result={{ ok: true, files }} />);
+  render(
+    <MeetingFiles
+      meetingId="m1"
+      maxUploadBytes={DEFAULT_MAX_UPLOAD_BYTES}
+      result={{ ok: true, files }}
+    />,
+  );
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -45,6 +56,9 @@ describe('MeetingFiles: доступность', () => {
   it('Tab проходит по кнопкам по порядку, Enter и пробел скачивают', async () => {
     setup();
     const user = userEvent.setup();
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Выбрать файл' })).toHaveFocus();
 
     await user.tab();
     expect(screen.getByRole('button', { name: 'Скачать a.txt' })).toHaveFocus();

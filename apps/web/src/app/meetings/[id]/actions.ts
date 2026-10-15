@@ -3,6 +3,7 @@
 import { API_URL } from '@/lib/api';
 import { apiFetch } from '@/lib/meetings';
 import { isNextControlFlow } from '@/lib/next-errors';
+import { getAccessToken } from '@/lib/session';
 
 export type DownloadLinkResult = { url: string } | { error: string };
 
@@ -31,4 +32,15 @@ export async function getDownloadLink(
   }
   const { url } = (await res.json()) as { url: string };
   return { url: `${API_URL}${url}` };
+}
+
+export type UploadCredentialsResult =
+  { token: string; apiUrl: string } | { error: string };
+
+// Загрузка идёт напрямую из браузера в api (XHR с прогрессом и отменой), а JWT лежит
+// в httpOnly-cookie, поэтому отдаём его клиенту на время одной загрузки.
+export async function getUploadCredentials(): Promise<UploadCredentialsResult> {
+  const token = await getAccessToken();
+  if (!token) return { error: 'Сессия истекла, войдите заново' };
+  return { token, apiUrl: API_URL };
 }

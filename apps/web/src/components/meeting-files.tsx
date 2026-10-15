@@ -1,5 +1,6 @@
 import { Card } from '@heroui/react';
 import { DownloadButton } from './download-button';
+import { FileUpload } from './file-upload';
 import type { FilesResult } from '@/lib/files';
 import { formatDateTime, formatFileSize } from '@/lib/format';
 
@@ -11,9 +12,11 @@ const ERROR_MESSAGES = {
 export function MeetingFiles({
   meetingId,
   result,
+  maxUploadBytes,
 }: {
   meetingId: string;
   result: FilesResult;
+  maxUploadBytes: number;
 }) {
   const files = result.ok ? result.files : [];
   return (
@@ -23,7 +26,10 @@ export function MeetingFiles({
           Файлы
         </Card.Title>
       </Card.Header>
-      <Card.Content>
+      <Card.Content className="flex flex-col gap-4">
+        {result.ok ? (
+          <FileUpload meetingId={meetingId} maxBytes={maxUploadBytes} />
+        ) : null}
         {!result.ok ? (
           <p role="alert" className="py-6 text-center text-danger">
             {ERROR_MESSAGES[result.reason]}

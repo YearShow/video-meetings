@@ -1,9 +1,14 @@
 import { vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { MeetingFile } from '@/lib/files';
+import { DEFAULT_MAX_UPLOAD_BYTES } from '@/lib/upload';
 import { MeetingFiles } from './meeting-files';
 
-vi.mock('@/app/meetings/[id]/actions', () => ({ getDownloadLink: vi.fn() }));
+vi.mock('@/app/meetings/[id]/actions', () => ({
+  getDownloadLink: vi.fn(),
+  getUploadCredentials: vi.fn(),
+}));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const file = (over: Partial<MeetingFile> = {}): MeetingFile => ({
   id: 'f1',
@@ -17,7 +22,11 @@ const file = (over: Partial<MeetingFile> = {}): MeetingFile => ({
 describe('MeetingFiles: список', () => {
   it('показывает имя, размер, дату и автора', () => {
     render(
-      <MeetingFiles meetingId="m1" result={{ ok: true, files: [file()] }} />,
+      <MeetingFiles
+        meetingId="m1"
+        maxUploadBytes={DEFAULT_MAX_UPLOAD_BYTES}
+        result={{ ok: true, files: [file()] }}
+      />,
     );
     const item = screen.getByRole('listitem');
     expect(within(item).getByText('отчёт.pdf')).toBeInTheDocument();
@@ -34,6 +43,7 @@ describe('MeetingFiles: список', () => {
     render(
       <MeetingFiles
         meetingId="m1"
+        maxUploadBytes={DEFAULT_MAX_UPLOAD_BYTES}
         result={{
           ok: true,
           files: [
@@ -51,7 +61,13 @@ describe('MeetingFiles: список', () => {
   });
 
   it('показывает пустое состояние', () => {
-    render(<MeetingFiles meetingId="m1" result={{ ok: true, files: [] }} />);
+    render(
+      <MeetingFiles
+        meetingId="m1"
+        maxUploadBytes={DEFAULT_MAX_UPLOAD_BYTES}
+        result={{ ok: true, files: [] }}
+      />,
+    );
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     expect(screen.getByText('Файлов пока нет.')).toBeInTheDocument();
   });
@@ -62,6 +78,7 @@ describe('MeetingFiles: ошибки', () => {
     render(
       <MeetingFiles
         meetingId="m1"
+        maxUploadBytes={DEFAULT_MAX_UPLOAD_BYTES}
         result={{ ok: false, reason: 'forbidden' }}
       />,
     );
@@ -74,6 +91,7 @@ describe('MeetingFiles: ошибки', () => {
     render(
       <MeetingFiles
         meetingId="m1"
+        maxUploadBytes={DEFAULT_MAX_UPLOAD_BYTES}
         result={{ ok: false, reason: 'unavailable' }}
       />,
     );
