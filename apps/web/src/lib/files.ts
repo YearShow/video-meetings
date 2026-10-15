@@ -1,3 +1,4 @@
+import { isNextControlFlow } from './next-errors';
 import { apiFetch } from './meetings';
 
 export interface MeetingFile {
@@ -28,14 +29,4 @@ export async function getMeetingFiles(meetingId: string): Promise<FilesResult> {
   }
   if (!res.ok) return { ok: false, reason: 'unavailable' };
   return { ok: true, files: await res.json() };
-}
-
-function isNextControlFlow(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'digest' in error &&
-    typeof error.digest === 'string' &&
-    error.digest.startsWith('NEXT_')
-  );
 }

@@ -1,6 +1,9 @@
+import { vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { MeetingFile } from '@/lib/files';
 import { MeetingFiles } from './meeting-files';
+
+vi.mock('@/app/meetings/[id]/actions', () => ({ getDownloadLink: vi.fn() }));
 
 const file = (over: Partial<MeetingFile> = {}): MeetingFile => ({
   id: 'f1',
@@ -13,7 +16,7 @@ const file = (over: Partial<MeetingFile> = {}): MeetingFile => ({
 
 describe('MeetingFiles: список', () => {
   it('показывает имя, размер, дату и автора', () => {
-    render(<MeetingFiles files={[file()]} />);
+    render(<MeetingFiles meetingId="m1" files={[file()]} />);
     const item = screen.getByRole('listitem');
     expect(within(item).getByText('отчёт.pdf')).toBeInTheDocument();
     expect(item).toHaveTextContent(/1,5\s*КБ/);
@@ -28,6 +31,7 @@ describe('MeetingFiles: список', () => {
   it('рендерит все файлы в порядке api', () => {
     render(
       <MeetingFiles
+        meetingId="m1"
         files={[
           file({ id: 'a', name: 'a.txt' }),
           file({ id: 'b', name: 'b.txt' }),
@@ -42,7 +46,7 @@ describe('MeetingFiles: список', () => {
   });
 
   it('показывает пустое состояние', () => {
-    render(<MeetingFiles files={[]} />);
+    render(<MeetingFiles meetingId="m1" files={[]} />);
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     expect(screen.getByText('Файлов пока нет.')).toBeInTheDocument();
   });
