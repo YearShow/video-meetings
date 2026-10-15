@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Get,
   Post,
   Req,
   Res,
@@ -9,7 +10,7 @@ import {
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CommandBus } from '@nestjs/cqrs';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import busboy from 'busboy';
 import type { Request, Response } from 'express';
 import { Param } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { FileTooLargeError } from '../../storage/file-storage.js';
 import { MeetingAccessGuard } from '../meeting-access.guard.js';
 import { UploadMeetingFileCommand } from './commands/upload-meeting-file.command.js';
 import type { MeetingFileView } from './file.view.js';
+import { GetMeetingFilesQuery } from './queries/get-meeting-files.query.js';
 import { getMaxUploadBytes } from './upload-limit.js';
 
 // Запас на границы multipart и заголовки части поверх размера файла.
@@ -29,8 +31,17 @@ const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 export class MeetingFilesController {
   constructor(
     private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
     private readonly config: ConfigService,
   ) {}
+
+  @Get()
+  list(
+    @CurrentUser() user: AuthUser,
+    @Param('meetingId') meetingId: string,
+  ): Promise<MeetingFileView[]> {
+    return this.queryBus.execute(new GetMeetingFilesQuery(user.id, meetingId));
+  }
 
   // Один файл за раз, multipart/form-data. Файл не буферизуется: поток из busboy
   // сразу уходит в команду и дальше в хранилище.
@@ -59,9 +70,19 @@ export class MeetingFilesController {
 
     return new Promise<MeetingFileView>((resolve, reject) => {
       let fileSeen = false;
+      let settled = false;
+      const succeed = (view: MeetingFileView) => {
+        if (settled) return;
+        settled = true;
+        resolve(view);
+      };
+      // Первая ошибка побеждает: остальные (ошибка парсера после отказа команды,
+      // close без файла и т. п.) игнорируются и не пишут в уже отправленный ответ.
       const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
         // После ошибки остаток тела не нужен: закрываем соединение после ответа.
-        res.setHeader('Connection', 'close');
+        if (!res.headersSent) res.setHeader('Connection', 'close');
         reject(error instanceof Error ? error : new Error(String(error)));
       };
 
@@ -90,7 +111,7 @@ export class MeetingFilesController {
               stream,
             ),
           )
-          .then(resolve, fail);
+          .then(succeed, fail);
       });
       parser.on('filesLimit', () =>
         fail(new BadRequestException('Only one file per request is allowed')),

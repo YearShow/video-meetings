@@ -52,6 +52,13 @@ describe('Meeting files upload (e2e)', () => {
     return req.attach('file', content, { filename, contentType });
   };
 
+  const listFiles = (token: string | null, meetingId: string) => {
+    const req = request(app.getHttpServer()).get(
+      `/meetings/${meetingId}/files`,
+    );
+    return token ? req.set('Authorization', `Bearer ${token}`) : req;
+  };
+
   // Каталог хранилища без служебного .tmp: только файлы встреч.
   const storedFiles = async () => {
     const root = path.join(filesDir, 'meetings');
@@ -281,11 +288,87 @@ describe('Meeting files upload (e2e)', () => {
       });
       expect(await storedFiles()).toEqual(before);
 
-      const list = await request(app.getHttpServer())
-        .get(`/meetings/${meetingId}/files`)
-        .set('Authorization', `Bearer ${owner.token}`);
-      // Список появится в следующей задаче; до неё проверяем лишь отсутствие файла на диске.
-      if (list.status === 200) expect(list.body).toEqual([]);
+      await listFiles(owner.token, meetingId).expect(200, []);
+    });
+  });
+
+  describe('GET /meetings/:id/files', () => {
+    it('пустая встреча → пустой список', async () => {
+      const owner = await createUser();
+      const meetingId = await createMeeting(owner.token);
+
+      await listFiles(owner.token, meetingId).expect(200, []);
+    });
+
+    it('возвращает метаданные файлов, новые сверху', async () => {
+      const owner = await createUser();
+      const meetingId = await createMeeting(owner.token);
+      const first = await upload(
+        owner.token,
+        meetingId,
+        Buffer.from('one'),
+        'one.txt',
+      ).expect(201);
+      const second = await upload(
+        owner.token,
+        meetingId,
+        Buffer.from('three'),
+        'two.txt',
+      ).expect(201);
+
+      const res = await listFiles(owner.token, meetingId).expect(200);
+
+      expect(res.body).toEqual([second.body, first.body]);
+      expect(res.body[1]).toEqual({
+        id: expect.any(String),
+        name: 'one.txt',
+        mimeType: 'text/plain',
+        size: 3,
+        status: 'UPLOADED',
+        createdAt: expect.any(String),
+        uploadedBy: { id: expect.any(String), email: owner.email },
+      });
+      expect(JSON.stringify(res.body)).not.toContain('storageKey');
+    });
+
+    it('показывает только файлы своей встречи', async () => {
+      const owner = await createUser();
+      const mine = await createMeeting(owner.token);
+      const other = await createMeeting(owner.token);
+      const inMine = await upload(owner.token, mine, Buffer.from('a')).expect(
+        201,
+      );
+      await upload(owner.token, other, Buffer.from('b')).expect(201);
+
+      const res = await listFiles(owner.token, mine).expect(200);
+
+      expect(res.body).toEqual([inMine.body]);
+    });
+
+    it('участник видит файлы встречи', async () => {
+      const owner = await createUser();
+      const participant = await createUser();
+      const meetingId = await createMeeting(owner.token, [participant.email]);
+      const uploaded = await upload(
+        owner.token,
+        meetingId,
+        Buffer.from('x'),
+      ).expect(201);
+
+      const res = await listFiles(participant.token, meetingId).expect(200);
+
+      expect(res.body).toEqual([uploaded.body]);
+    });
+
+    it('неудачная загрузка не появляется в списке', async () => {
+      const owner = await createUser();
+      const meetingId = await createMeeting(owner.token);
+
+      await upload(owner.token, meetingId, Buffer.alloc(LIMIT + 1, 1)).expect(
+        413,
+      );
+
+      await listFiles(owner.token, meetingId).expect(200, []);
     });
   });
 
@@ -319,6 +402,30 @@ describe('Meeting files upload (e2e)', () => {
       const owner = await createUser();
 
       await upload(owner.token, randomUUID(), Buffer.from('x')).expect(404);
+    });
+
+    it('список: без токена → 401', async () => {
+      const owner = await createUser();
+      const meetingId = await createMeeting(owner.token);
+
+      await listFiles(null, meetingId).expect(401);
+    });
+
+    it('список: посторонний → 404, файлы не раскрываются', async () => {
+      const owner = await createUser();
+      const stranger = await createUser();
+      const meetingId = await createMeeting(owner.token);
+      await upload(owner.token, meetingId, Buffer.from('x')).expect(201);
+
+      const res = await listFiles(stranger.token, meetingId).expect(404);
+
+      expect(JSON.stringify(res.body)).not.toContain('.txt');
+    });
+
+    it('список: несуществующая встреча → 404', async () => {
+      const owner = await createUser();
+
+      await listFiles(owner.token, randomUUID()).expect(404);
     });
   });
 });

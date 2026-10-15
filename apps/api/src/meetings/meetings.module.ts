@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { CreateMeetingHandler } from './commands/create-meeting.handler.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { UploadMeetingFileHandler } from './files/commands/upload-meeting-file.handler.js';
+import { GetMeetingFilesHandler } from './files/queries/get-meeting-files.handler.js';
 import { MeetingFilesController } from './files/meeting-files.controller.js';
 import { MeetingAccessGuard } from './meeting-access.guard.js';
 import { MeetingAccessService } from './meeting-access.service.js';
@@ -18,6 +19,7 @@ import { GetMeetingsHandler } from './queries/get-meetings.handler.js';
     MeetingAccessService,
     MeetingAccessGuard,
     UploadMeetingFileHandler,
+    GetMeetingFilesHandler,
     CreateMeetingHandler,
     GetMeetingsHandler,
     GetMeetingHandler,
