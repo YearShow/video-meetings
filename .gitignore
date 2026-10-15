@@ -12,3 +12,6 @@ npm-debug.log*
 
 # Prisma generated client
 apps/api/src/generated
+
+# Локальное хранилище файлов встреч
+apps/api/storage/
