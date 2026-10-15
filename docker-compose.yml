@@ -17,5 +17,29 @@ services:
       timeout: 5s
       retries: 10
 
+  # Запуск api в контейнере: docker compose up -d --build api.
+  # Файлы встреч лежат в именованном volume api_files и переживают пересоздание контейнера.
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: video-meetings-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-video_meetings}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      PORT: 4000
+      FILES_DIR: /data/files
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-524288000}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+    ports:
+      - '${API_PORT:-4000}:4000'
+    volumes:
+      - api_files:/data/files
+
 volumes:
   postgres_data:
+  api_files:
