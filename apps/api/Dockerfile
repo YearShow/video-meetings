@@ -23,4 +23,5 @@ USER node
 WORKDIR /app/apps/api
 EXPOSE 4000
 # Миграции применяются при старте (prisma migrate deploy идемпотентен).
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# JWT_SECRET без значения по умолчанию: пустой секрет — отказ запуска, а не известный ключ.
+CMD ["sh", "-c", "test -n \"$JWT_SECRET\" || { echo 'JWT_SECRET is required' >&2; exit 1; }; npx prisma migrate deploy && node dist/main.js"]

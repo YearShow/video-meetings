@@ -7,7 +7,12 @@ export const sanitizeFileName = (raw: string): string => {
   const base = raw.split(/[\\/]/).pop() ?? '';
   const cleaned = base
     // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, '')
+    // Невидимые символы и переключатели направления текста (U+202E и т. п.) подделывают расширение.
+    .replace(
+      /[\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g,
+      '',
+    )
     .normalize('NFC')
     .trim()
     .slice(0, MAX_NAME_LENGTH)

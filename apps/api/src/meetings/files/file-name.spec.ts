@@ -17,6 +17,11 @@ describe('sanitizeFileName', () => {
     expect(sanitizeFileName(raw)).toBe(expected);
   });
 
+  it('убирает переключатели направления и невидимые символы', () => {
+    expect(sanitizeFileName('photo\u202Egpj.exe')).toBe('photogpj.exe');
+    expect(sanitizeFileName('a\u200Bb\u0085c\ufeff.txt')).toBe('abc.txt');
+  });
+
   it('нормализует юникод в NFC', () => {
     expect(sanitizeFileName('e\u0301.txt')).toBe('\u00e9.txt');
   });
