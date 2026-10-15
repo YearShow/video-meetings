@@ -30,6 +30,7 @@ describe('UploadMeetingFileHandler', () => {
     vi.resetAllMocks();
     hasAccess.mockResolvedValue(true);
     save.mockResolvedValue({ size: 4 });
+    del.mockResolvedValue(undefined);
     create.mockImplementation(({ data }) =>
       Promise.resolve({
         ...data,
@@ -98,6 +99,13 @@ describe('UploadMeetingFileHandler', () => {
 
     await expect(handler.execute(command())).rejects.toThrow('db down');
     expect(del).toHaveBeenCalledWith(save.mock.calls[0][0]);
+  });
+
+  it('ошибка очистки файла не подменяет исходную ошибку БД', async () => {
+    create.mockRejectedValue(new Error('db down'));
+    del.mockRejectedValue(new Error('EACCES'));
+
+    await expect(handler.execute(command())).rejects.toThrow('db down');
   });
 
   it('без доступа к встрече → 404, поток закрыт, в хранилище не пишет', async () => {

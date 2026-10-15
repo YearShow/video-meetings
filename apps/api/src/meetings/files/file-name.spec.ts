@@ -29,7 +29,10 @@ describe('sanitizeFileName', () => {
 describe('normalizeMimeType', () => {
   it.each([
     ['video/mp4', 'video/mp4'],
-    ['text/plain; charset=utf-8', 'text/plain; charset=utf-8'],
+    ['Text/Plain; charset=utf-8', 'text/plain'],
+    ['video/mp4;codecs=avc1', 'video/mp4'],
+    ['text/html x=<junk>', 'application/octet-stream'],
+    ['text/plain\r\nX-Evil: 1', 'application/octet-stream'],
     ['', 'application/octet-stream'],
     ['garbage', 'application/octet-stream'],
   ])('%j → %j', (raw, expected) => {

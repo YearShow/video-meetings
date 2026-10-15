@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Param,
   Post,
   Req,
   Res,
@@ -13,7 +14,6 @@ import { ConfigService } from '@nestjs/config';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import busboy from 'busboy';
 import type { Request, Response } from 'express';
-import { Param } from '@nestjs/common';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthUser } from '../../auth/jwt-auth.guard.js';
 import { FileTooLargeError } from '../../storage/file-storage.js';

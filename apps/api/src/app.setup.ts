@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Server } from 'node:http';
 
 export const DEFAULT_WEB_ORIGIN = 'http://localhost:3000';
+export const REQUEST_TIMEOUT_MS = 60 * 60 * 1000; // 1 час
 
 // Настройка, общая для main.ts и e2e-тестов.
 export function configureApp(app: INestApplication): void {
@@ -18,6 +19,7 @@ export function configureApp(app: INestApplication): void {
   });
 
   // Загрузка файла до 500 MiB на медленном канале идёт дольше 5 минут, которые
-  // Node по умолчанию даёт на получение всего запроса.
-  (app.getHttpServer() as Server).requestTimeout = 0;
+  // Node по умолчанию даёт на получение всего запроса. Ноль отключил бы защиту от
+  // медленных клиентов на всех маршрутах, поэтому задаём большой, но конечный потолок.
+  (app.getHttpServer() as Server).requestTimeout = REQUEST_TIMEOUT_MS;
 }

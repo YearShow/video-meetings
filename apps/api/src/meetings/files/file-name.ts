@@ -19,5 +19,7 @@ export const sanitizeFileName = (raw: string): string => {
 
 export const normalizeMimeType = (raw: string): string => {
   const value = raw.trim().slice(0, 255);
-  return /^[\w.+-]+\/[\w.+-]+/.test(value) ? value : DEFAULT_MIME_TYPE;
+  // Только тип/подтип: параметры (charset и т. п.) отбрасываются, регистр приводится к нижнему.
+  const match = /^([\w.+-]+\/[\w.+-]+)\s*(?:;|$)/.exec(value);
+  return match ? match[1].toLowerCase() : DEFAULT_MIME_TYPE;
 };

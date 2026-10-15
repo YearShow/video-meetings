@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   Inject,
+  Logger,
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
@@ -20,6 +21,8 @@ import { UploadMeetingFileCommand } from './upload-meeting-file.command.js';
 
 @CommandHandler(UploadMeetingFileCommand)
 export class UploadMeetingFileHandler implements ICommandHandler<UploadMeetingFileCommand> {
+  private readonly logger = new Logger(UploadMeetingFileHandler.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: MeetingAccessService,
@@ -69,7 +72,13 @@ export class UploadMeetingFileHandler implements ICommandHandler<UploadMeetingFi
       });
       return toFileView(file);
     } catch (error) {
-      await this.storage.delete(storageKey);
+      // Ошибка очистки не должна подменять исходную причину сбоя.
+      await this.storage.delete(storageKey).catch((cleanupError: unknown) => {
+        this.logger.error(
+          `Failed to remove orphaned file ${storageKey}`,
+          cleanupError instanceof Error ? cleanupError.stack : undefined,
+        );
+      });
       throw error;
     }
   }
