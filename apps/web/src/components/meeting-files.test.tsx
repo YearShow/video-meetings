@@ -3,7 +3,11 @@ import { render, screen, within } from '@testing-library/react';
 import type { MeetingFile } from '@/lib/files';
 import { MeetingFiles } from './meeting-files';
 
-vi.mock('@/app/meetings/[id]/actions', () => ({ getDownloadLink: vi.fn() }));
+vi.mock('@/app/meetings/[id]/actions', () => ({
+  getDownloadLink: vi.fn(),
+  getUploadCredentials: vi.fn(),
+}));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const file = (over: Partial<MeetingFile> = {}): MeetingFile => ({
   id: 'f1',

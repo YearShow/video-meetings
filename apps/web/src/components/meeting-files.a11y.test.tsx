@@ -5,7 +5,11 @@ import { getDownloadLink } from '@/app/meetings/[id]/actions';
 import type { MeetingFile } from '@/lib/files';
 import { MeetingFiles } from './meeting-files';
 
-vi.mock('@/app/meetings/[id]/actions', () => ({ getDownloadLink: vi.fn() }));
+vi.mock('@/app/meetings/[id]/actions', () => ({
+  getDownloadLink: vi.fn(),
+  getUploadCredentials: vi.fn(),
+}));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const files: MeetingFile[] = ['a.txt', 'b.txt'].map((name, i) => ({
   id: `f${i}`,
@@ -45,6 +49,9 @@ describe('MeetingFiles: доступность', () => {
   it('Tab проходит по кнопкам по порядку, Enter и пробел скачивают', async () => {
     setup();
     const user = userEvent.setup();
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Выбрать файл' })).toHaveFocus();
 
     await user.tab();
     expect(screen.getByRole('button', { name: 'Скачать a.txt' })).toHaveFocus();
