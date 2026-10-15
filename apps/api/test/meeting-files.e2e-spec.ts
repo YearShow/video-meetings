@@ -10,6 +10,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
+import { configureApp } from './../src/app.setup.js';
 
 const PASSWORD = 'correct-horse-battery';
 const LIMIT = 1024 * 1024; // 1 MiB вместо 500 MiB, чтобы тесты были быстрыми
@@ -88,6 +89,7 @@ describe('Meeting files upload (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleFixture.createNestApplication();
+    configureApp(app);
     await app.init();
   });
 
@@ -369,6 +371,60 @@ describe('Meeting files upload (e2e)', () => {
       );
 
       await listFiles(owner.token, meetingId).expect(200, []);
+    });
+  });
+
+  describe('CORS', () => {
+    const WEB = 'http://localhost:3000';
+
+    it('preflight от web разрешает POST с Authorization', async () => {
+      const res = await request(app.getHttpServer())
+        .options('/meetings/any/files')
+        .set('Origin', WEB)
+        .set('Access-Control-Request-Method', 'POST')
+        .set('Access-Control-Request-Headers', 'authorization')
+        .expect(204);
+
+      expect(res.headers['access-control-allow-origin']).toBe(WEB);
+      expect(res.headers['access-control-allow-headers']).toMatch(
+        /authorization/i,
+      );
+      expect(res.headers['access-control-allow-methods']).toMatch(/POST/);
+    });
+
+    it('ответы содержат разрешённый origin', async () => {
+      const owner = await createUser();
+      const meetingId = await createMeeting(owner.token);
+
+      const res = await listFiles(owner.token, meetingId)
+        .set('Origin', WEB)
+        .expect(200);
+
+      expect(res.headers['access-control-allow-origin']).toBe(WEB);
+    });
+
+    it('чужому origin разрешение не выдаётся', async () => {
+      const res = await request(app.getHttpServer())
+        .options('/meetings/any/files')
+        .set('Origin', 'http://evil.example')
+        .set('Access-Control-Request-Method', 'POST');
+
+      expect(res.headers['access-control-allow-origin']).not.toBe(
+        'http://evil.example',
+      );
+      expect(res.headers['access-control-allow-origin']).not.toBe('*');
+    });
+
+    it('ошибка доступа тоже несёт CORS-заголовки, браузер увидит 404', async () => {
+      const owner = await createUser();
+      const stranger = await createUser();
+      const meetingId = await createMeeting(owner.token);
+
+      const res = await listFiles(stranger.token, meetingId)
+        .set('Origin', WEB)
+        .expect(404);
+
+      expect(res.headers['access-control-allow-origin']).toBe(WEB);
     });
   });
 
