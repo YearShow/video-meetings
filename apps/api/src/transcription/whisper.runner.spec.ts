@@ -8,8 +8,12 @@ import { parseWhisperProgress, WhisperRunner } from './whisper.runner.js';
 describe('WhisperRunner', () => {
   let dir: string;
 
+  let model: string;
+
   beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), 'whisper-runner-spec-'));
+    model = join(dir, 'ggml-base.bin');
+    await writeFile(model, '');
   });
   afterAll(async () => {
     await rm(dir, { recursive: true, force: true });
@@ -32,12 +36,23 @@ describe('WhisperRunner', () => {
 
     const text = await runner({
       WHISPER_BIN: bin,
-      WHISPER_MODEL_PATH: '/models/ggml-base.bin',
+      WHISPER_MODEL_PATH: model,
     }).transcribe('/tmp/in.mp3');
 
-    expect(text).toContain('-m /models/ggml-base.bin -l ru');
+    expect(text).toContain(`-m ${model} -l ru`);
     expect(text).toContain('-f /tmp/in.mp3');
     expect(text).toContain('привет');
+  });
+
+  it('файла модели нет → «Файл модели Whisper не найден»', async () => {
+    const bin = await fakeBin('never', 'echo no');
+
+    await expect(
+      runner({
+        WHISPER_BIN: bin,
+        WHISPER_MODEL_PATH: join(dir, 'absent.bin'),
+      }).transcribe('/tmp/in.mp3'),
+    ).rejects.toThrow('Файл модели Whisper не найден');
   });
 
   it('без пути к модели → понятная ошибка', async () => {
@@ -50,7 +65,7 @@ describe('WhisperRunner', () => {
     await expect(
       runner({
         WHISPER_BIN: join(dir, 'missing'),
-        WHISPER_MODEL_PATH: '/m.bin',
+        WHISPER_MODEL_PATH: model,
       }).transcribe('/tmp/in.mp3'),
     ).rejects.toThrow(TranscriptionError);
   });
@@ -60,7 +75,7 @@ describe('WhisperRunner', () => {
 
     const error = await runner({
       WHISPER_BIN: bin,
-      WHISPER_MODEL_PATH: '/m.bin',
+      WHISPER_MODEL_PATH: model,
     })
       .transcribe('/tmp/in.mp3')
       .catch((e: Error) => e);
@@ -76,7 +91,7 @@ describe('WhisperRunner', () => {
     );
 
     await expect(
-      runner({ WHISPER_BIN: bin, WHISPER_MODEL_PATH: '/m.bin' }).transcribe(
+      runner({ WHISPER_BIN: bin, WHISPER_MODEL_PATH: model }).transcribe(
         '/tmp/in.mp3',
       ),
     ).rejects.toThrow('Файл повреждён');
@@ -94,7 +109,7 @@ describe('WhisperRunner', () => {
 
     const text = await runner({
       WHISPER_BIN: bin,
-      WHISPER_MODEL_PATH: '/m.bin',
+      WHISPER_MODEL_PATH: model,
     }).transcribe('/tmp/in.mp3', (p) => seen.push(p));
 
     expect(text).toBe('готово');

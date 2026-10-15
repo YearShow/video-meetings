@@ -1,3 +1,4 @@
+import { access } from 'node:fs/promises';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { runProcess } from './run-process.js';
@@ -34,6 +35,10 @@ export class WhisperRunner {
     if (!modelPath) {
       throw new TranscriptionError('Модель Whisper не настроена');
     }
+    // Без этой проверки отсутствие модели выглядело бы как «файл повреждён».
+    await access(modelPath).catch(() => {
+      throw new TranscriptionError('Файл модели Whisper не найден');
+    });
     const bin = this.config.get<string>('WHISPER_BIN') || DEFAULT_WHISPER_BIN;
 
     let result;

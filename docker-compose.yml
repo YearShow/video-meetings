@@ -35,10 +35,14 @@ services:
       FILES_DIR: /data/files
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-524288000}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      WHISPER_MODEL_PATH: /models/ggml-base.bin
+      TRANSCRIPTION_CONCURRENCY: ${TRANSCRIPTION_CONCURRENCY:-1}
     ports:
       - '${API_PORT:-4000}:4000'
     volumes:
       - api_files:/data/files
+      # Модель Whisper (ggml-base.bin) лежит на хосте и не хранится в репозитории.
+      - ${WHISPER_MODELS_DIR:-./models}:/models:ro
 
 volumes:
   postgres_data:
