@@ -9,6 +9,8 @@ import { MeetingFiles } from './meeting-files';
 vi.mock('@/app/meetings/[id]/actions', () => ({
   getDownloadLink: vi.fn(),
   getUploadCredentials: vi.fn(),
+  refreshMeetingFiles: vi.fn(),
+  retryTranscription: vi.fn(),
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -18,6 +20,7 @@ const files: MeetingFile[] = ['a.txt', 'b.txt'].map((name, i) => ({
   size: 10,
   createdAt: '2026-03-05T09:30:00.000Z',
   uploadedBy: { id: 'u1', email: 'anna@example.com' },
+  transcription: null,
 }));
 
 function setup() {

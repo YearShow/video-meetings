@@ -1,5 +1,6 @@
 import { isNextControlFlow } from './next-errors';
 import { apiFetch } from './meetings';
+import type { Transcription } from './transcription';
 
 export interface MeetingFile {
   id: string;
@@ -7,6 +8,7 @@ export interface MeetingFile {
   size: number;
   createdAt: string;
   uploadedBy: { id: string; email: string };
+  transcription: Transcription | null;
 }
 
 // forbidden — встреча недоступна пользователю (api отвечает 403/404),
