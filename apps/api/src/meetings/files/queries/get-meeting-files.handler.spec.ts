@@ -15,6 +15,7 @@ const record = (id: string) => ({
   status: 'UPLOADED',
   createdAt: new Date('2030-01-01T00:00:00Z'),
   uploadedBy: { id: 'u1', email: 'u1@example.com' },
+  transcription: null as null | Record<string, unknown>,
 });
 
 describe('GetMeetingFilesHandler', () => {
@@ -58,9 +59,35 @@ describe('GetMeetingFilesHandler', () => {
       status: 'UPLOADED',
       createdAt: new Date('2030-01-01T00:00:00Z'),
       uploadedBy: { id: 'u1', email: 'u1@example.com' },
+      transcription: null,
     });
     expect(file).not.toHaveProperty('storageKey');
     expect(file).not.toHaveProperty('meetingId');
+  });
+
+  it('отдаёт статус, прогресс и текст транскрибации', async () => {
+    findMany.mockResolvedValue([
+      {
+        ...record('f1'),
+        transcription: {
+          status: 'DONE',
+          progress: 100,
+          text: 'привет',
+          error: null,
+          id: 'internal',
+          fileId: 'f1',
+        },
+      },
+    ]);
+
+    const [file] = await handler.execute(query);
+
+    expect(file.transcription).toEqual({
+      status: 'DONE',
+      progress: 100,
+      text: 'привет',
+      error: null,
+    });
   });
 
   it('пустая встреча → пустой список', async () => {

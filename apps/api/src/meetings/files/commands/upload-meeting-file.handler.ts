@@ -13,6 +13,8 @@ import {
   FileTooLargeError,
   type FileStorage,
 } from '../../../storage/file-storage.js';
+import { isTranscribable } from '../../../transcription/transcribable-format.js';
+import { TranscriptionService } from '../../../transcription/transcription.service.js';
 import { MeetingAccessService } from '../../meeting-access.service.js';
 import { normalizeMimeType, sanitizeFileName } from '../file-name.js';
 import { fileInclude, toFileView, type MeetingFileView } from '../file.view.js';
@@ -28,6 +30,7 @@ export class UploadMeetingFileHandler implements ICommandHandler<UploadMeetingFi
     private readonly access: MeetingAccessService,
     private readonly config: ConfigService,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
+    private readonly transcription: TranscriptionService,
   ) {}
 
   async execute(command: UploadMeetingFileCommand): Promise<MeetingFileView> {
@@ -57,19 +60,26 @@ export class UploadMeetingFileHandler implements ICommandHandler<UploadMeetingFi
 
     // Запись в БД создаётся только после успешной записи файла; если она упала,
     // файл в хранилище удаляется, чтобы не осталось неучтённых данных.
+    const originalName = sanitizeFileName(command.fileName);
+    const mimeType = normalizeMimeType(command.mimeType);
+    const transcribe = isTranscribable(originalName, mimeType);
     try {
       const file = await this.prisma.meetingFile.create({
         data: {
           id: fileId,
           meetingId: command.meetingId,
           uploadedById: command.userId,
-          originalName: sanitizeFileName(command.fileName),
-          mimeType: normalizeMimeType(command.mimeType),
+          originalName,
+          mimeType,
           sizeBytes: size,
           storageKey,
+          // Для mp3/mp4 сразу заводится транскрибация в статусе QUEUED.
+          ...(transcribe && { transcription: { create: {} } }),
         },
         include: fileInclude,
       });
+      // Расшифровка идёт в фоне: ответ загрузки её не ждёт.
+      if (transcribe) this.transcription.enqueue(file.id);
       return toFileView(file);
     } catch (error) {
       // Ошибка очистки не должна подменять исходную причину сбоя.

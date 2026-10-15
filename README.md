@@ -25,6 +25,11 @@ npm run dev                               # web :3000, api :4000
 | `DATABASE_URL`, `JWT_SECRET` | api     | подключение к БД и секрет JWT (обязательны)                                            |
 | `FILES_DIR`                  | api     | каталог файлов встреч (обязательна; локально `./storage`, в Docker — `/data/files`)    |
 | `MAX_UPLOAD_BYTES`           | api     | лимит размера файла, по умолчанию 524288000 (500 МиБ), не больше 2³¹−1                 |
+| `WHISPER_BIN`                | api     | бинарник whisper.cpp для транскрибации, по умолчанию `whisper-cli`                     |
+| `WHISPER_MODEL_PATH`         | api     | путь к модели `ggml-base.bin`; без него транскрибация завершается ошибкой              |
+| `FFMPEG_BIN`                 | api     | ffmpeg для извлечения звука из mp4, по умолчанию `ffmpeg` из PATH                      |
+| `TRANSCRIPTION_CONCURRENCY`  | api     | сколько файлов расшифровывается одновременно, по умолчанию 1                           |
+| `TRANSCRIPTION_RECOVERY`     | api     | `off` отключает возврат незавершённых задач в очередь при старте                       |
 | `WEB_ORIGIN`                 | api     | origin `web` для CORS, по умолчанию `http://localhost:3000`                            |
 | `PORT`, `API_PORT`           | api     | порт api (4000) и порт на хосте в compose                                              |
 | `API_URL`                    | web     | адрес api, по умолчанию `http://localhost:4000`                                        |

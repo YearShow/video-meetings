@@ -58,18 +58,43 @@ enum MeetingFileStatus {
 // Файл, загруженный в встречу. Само содержимое лежит в хранилище по storageKey
 // (ключ строит сервер, имя от пользователя в путь не попадает).
 model MeetingFile {
-  id           String            @id @default(uuid(7))
-  meetingId    String            @map("meeting_id")
-  meeting      Meeting           @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  uploadedById String            @map("uploaded_by_id")
-  uploadedBy   User              @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
-  originalName String            @map("original_name")
-  mimeType     String            @map("mime_type")
-  sizeBytes    Int               @map("size_bytes")
-  storageKey   String            @unique @map("storage_key")
-  status       MeetingFileStatus @default(UPLOADED)
-  createdAt    DateTime          @default(now()) @map("created_at")
+  id            String             @id @default(uuid(7))
+  meetingId     String             @map("meeting_id")
+  meeting       Meeting            @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  uploadedById  String             @map("uploaded_by_id")
+  uploadedBy    User               @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  originalName  String             @map("original_name")
+  mimeType      String             @map("mime_type")
+  sizeBytes     Int                @map("size_bytes")
+  storageKey    String             @unique @map("storage_key")
+  status        MeetingFileStatus  @default(UPLOADED)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  transcription FileTranscription?
 
   @@index([meetingId, createdAt])
   @@map("meeting_files")
+}
+
+enum TranscriptionStatus {
+  QUEUED
+  IN_PROGRESS
+  DONE
+  ERROR
+}
+
+// Транскрибация файла встречи (локальный Whisper). Создаётся при загрузке mp3/mp4;
+// для файлов других форматов записи нет. Удаляется каскадом вместе с файлом.
+model FileTranscription {
+  id        String              @id @default(uuid(7))
+  fileId    String              @unique @map("file_id")
+  file      MeetingFile         @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  status    TranscriptionStatus @default(QUEUED)
+  progress  Int                 @default(0)
+  text      String?
+  error     String?
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("file_transcriptions")
 }
