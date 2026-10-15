@@ -24,7 +24,12 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string }>(token);
+      const payload = await this.jwt.verifyAsync<{
+        sub: string;
+        scope?: string;
+      }>(token);
+      // Токены с узким правом (например, ссылка скачивания) не открывают остальной API.
+      if (payload.scope !== undefined) throw new UnauthorizedException();
       req.user = { id: payload.sub };
     } catch {
       throw new UnauthorizedException();

@@ -1,4 +1,5 @@
 import {
+  mkdir,
   mkdtemp,
   readFile,
   readdir,
@@ -172,6 +173,19 @@ describe('LocalDiskStorage', () => {
       expect(removed).toBe(1);
       expect(await exists(old)).toBe(false);
       expect(await exists(fresh)).toBe(true);
+    });
+
+    it('при старте убирает остатки прошлого запуска', async () => {
+      const tmp = path.join(root, '.tmp');
+      const stale = path.join(tmp, 'stale');
+      await mkdir(tmp, { recursive: true });
+      await writeFile(stale, 'x');
+      const past = new Date(Date.now() - 3 * 3600_000);
+      await utimes(stale, past, past);
+
+      await storage.onModuleInit();
+
+      expect(await exists(stale)).toBe(false);
     });
 
     it('без временного каталога возвращает 0', async () => {

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  HttpCode,
   Param,
   Post,
   Req,
@@ -20,6 +21,7 @@ import { FileTooLargeError } from '../../storage/file-storage.js';
 import { MeetingAccessGuard } from '../meeting-access.guard.js';
 import { UploadMeetingFileCommand } from './commands/upload-meeting-file.command.js';
 import type { MeetingFileView } from './file.view.js';
+import { CreateDownloadLinkQuery } from './queries/create-download-link.query.js';
 import { GetMeetingFilesQuery } from './queries/get-meeting-files.query.js';
 import { getMaxUploadBytes } from './upload-limit.js';
 
@@ -41,6 +43,20 @@ export class MeetingFilesController {
     @Param('meetingId') meetingId: string,
   ): Promise<MeetingFileView[]> {
     return this.queryBus.execute(new GetMeetingFilesQuery(user.id, meetingId));
+  }
+
+  // Ссылка на скачивание: проверка доступа здесь, по обычному JWT. Сама ссылка
+  // живёт минуту и открывается навигацией браузера (см. MeetingFileContentController).
+  @Post(':fileId/download-link')
+  @HttpCode(200)
+  downloadLink(
+    @CurrentUser() user: AuthUser,
+    @Param('meetingId') meetingId: string,
+    @Param('fileId') fileId: string,
+  ): Promise<{ url: string }> {
+    return this.queryBus.execute(
+      new CreateDownloadLinkQuery(user.id, meetingId, fileId),
+    );
   }
 
   // Один файл за раз, multipart/form-data. Файл не буферизуется: поток из busboy

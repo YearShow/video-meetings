@@ -4,6 +4,7 @@ import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import type { OnModuleInit } from '@nestjs/common';
 import {
   FileTooLargeError,
   InvalidStorageKeyError,
@@ -12,12 +13,19 @@ import {
 } from './file-storage.js';
 
 const TMP_DIR = '.tmp';
+// Запись до requestTimeout (1 час) ещё может идти; старше — остаток упавшего процесса.
+const STALE_TMP_AGE_MS = 2 * 60 * 60 * 1000;
 
-export class LocalDiskStorage implements FileStorage {
+export class LocalDiskStorage implements FileStorage, OnModuleInit {
   private readonly root: string;
 
   constructor(root: string) {
     this.root = path.resolve(root);
+  }
+
+  // При старте убираем недописанные файлы, оставшиеся после падения процесса.
+  async onModuleInit(): Promise<void> {
+    await this.cleanupTemp(STALE_TMP_AGE_MS);
   }
 
   // Запись идёт во временный файл на том же томе, затем атомарный rename:
