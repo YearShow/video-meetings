@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { getDownloadLink } from '@/app/meetings/[id]/actions';
 import type { MeetingFile } from '@/lib/files';
+import { DEFAULT_MAX_UPLOAD_BYTES } from '@/lib/upload';
 import { MeetingFiles } from './meeting-files';
 
 vi.mock('@/app/meetings/[id]/actions', () => ({
@@ -22,7 +23,13 @@ const files: MeetingFile[] = ['a.txt', 'b.txt'].map((name, i) => ({
 function setup() {
   vi.mocked(getDownloadLink).mockResolvedValue({ url: 'http://api.test/x' });
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-  render(<MeetingFiles meetingId="m1" result={{ ok: true, files }} />);
+  render(
+    <MeetingFiles
+      meetingId="m1"
+      maxUploadBytes={DEFAULT_MAX_UPLOAD_BYTES}
+      result={{ ok: true, files }}
+    />,
+  );
 }
 
 afterEach(() => vi.restoreAllMocks());

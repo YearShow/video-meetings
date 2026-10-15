@@ -1,7 +1,26 @@
-export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // как в api по умолчанию
+export const DEFAULT_MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // как в api по умолчанию
+// Размер в api хранится в INTEGER (32 бита): лимит не может быть больше.
+const MAX_SUPPORTED_UPLOAD_BYTES = 2 ** 31 - 1;
 
+// Лимит файла, как в api: переменная MAX_UPLOAD_BYTES должна совпадать с api.
+export function parseMaxUploadBytes(value: string | undefined) {
+  const bytes = Number(value);
+  if (!Number.isSafeInteger(bytes) || bytes <= 0) {
+    return DEFAULT_MAX_UPLOAD_BYTES;
+  }
+  return Math.min(bytes, MAX_SUPPORTED_UPLOAD_BYTES);
+}
+
+// rejected — api отклонил сам запрос (400, 415 и т. п.): повтор того же файла бесполезен.
 export type UploadFailure =
-  'aborted' | 'too-large' | 'unauthorized' | 'forbidden' | 'network' | 'server';
+  | 'aborted'
+  | 'too-large'
+  | 'unauthorized'
+  | 'forbidden'
+  | 'not-found'
+  | 'rejected'
+  | 'network'
+  | 'server';
 
 export type UploadResult = { ok: true } | { ok: false; reason: UploadFailure };
 
@@ -15,8 +34,13 @@ interface UploadOptions {
 
 function failureFromStatus(status: number): UploadFailure {
   if (status === 401) return 'unauthorized';
-  if (status === 403 || status === 404) return 'forbidden';
+  if (status === 403) return 'forbidden';
+  if (status === 404) return 'not-found';
   if (status === 413) return 'too-large';
+  // 408 и 429 проходят при повторе, остальные 4xx — нет.
+  if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+    return 'rejected';
+  }
   return 'server';
 }
 

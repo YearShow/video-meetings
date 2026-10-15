@@ -3,17 +3,17 @@
 import { Button } from '@heroui/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getUploadCredentials } from '@/app/meetings/[id]/actions';
 import { formatFileSize } from '@/lib/format';
-import { MAX_UPLOAD_BYTES, uploadFile, type UploadFailure } from '@/lib/upload';
-
-const LIMIT_TEXT = formatFileSize(MAX_UPLOAD_BYTES);
+import { uploadFile, type UploadFailure } from '@/lib/upload';
 
 const FAILURE_MESSAGES: Record<Exclude<UploadFailure, 'aborted'>, string> = {
-  'too-large': `Файл больше ${LIMIT_TEXT}: сервер отклонил загрузку.`,
+  'too-large': 'Файл больше допустимого размера: сервер отклонил загрузку.',
   unauthorized: 'Сессия истекла, войдите заново.',
   forbidden: 'У вас нет доступа к файлам этой встречи.',
+  'not-found': 'Встреча не найдена: возможно, она удалена.',
+  rejected: 'Сервер не принял файл. Выберите другой файл.',
   network: 'Не удалось отправить файл: проверьте соединение.',
   server: 'Сервер не смог принять файл. Попробуйте ещё раз.',
 };
@@ -23,18 +23,43 @@ type State =
   | { status: 'uploading'; file: File; percent: number }
   | { status: 'failed'; file: File; reason: Exclude<UploadFailure, 'aborted'> };
 
-export function FileUpload({ meetingId }: { meetingId: string }) {
+// Ошибки, после которых повтор того же файла не поможет.
+const NO_RETRY: UploadFailure[] = [
+  'unauthorized',
+  'forbidden',
+  'not-found',
+  'rejected',
+];
+
+export function FileUpload({
+  meetingId,
+  maxBytes,
+}: {
+  meetingId: string;
+  maxBytes: number;
+}) {
+  const limitText = formatFileSize(maxBytes);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [state, setState] = useState<State>({ status: 'idle' });
   const [dragging, setDragging] = useState(false);
+  const mountedRef = useRef(true);
+
+  // Уход со страницы прерывает загрузку и не даёт обновить состояние и чужой маршрут.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+    };
+  }, []);
 
   async function start(file: File) {
-    if (file.size > MAX_UPLOAD_BYTES) {
+    if (file.size > maxBytes) {
       setState({
         status: 'idle',
-        error: `Файл «${file.name}» (${formatFileSize(file.size)}) больше ${LIMIT_TEXT}, загрузка не начата.`,
+        error: `Файл «${file.name}» (${formatFileSize(file.size)}) больше ${limitText}, загрузка не начата.`,
       });
       return;
     }
@@ -63,6 +88,7 @@ export function FileUpload({ meetingId }: { meetingId: string }) {
       result = { ok: false, reason: 'network' } as const;
     }
     abortRef.current = null;
+    if (!mountedRef.current) return;
 
     if (result.ok) {
       setState({ status: 'idle', message: `Файл «${file.name}» загружен.` });
@@ -109,7 +135,7 @@ export function FileUpload({ meetingId }: { meetingId: string }) {
         }`}
       >
         <p className="text-sm text-muted">
-          Перетащите файл сюда или выберите на устройстве (до {LIMIT_TEXT}).
+          Перетащите файл сюда или выберите на устройстве (до {limitText}).
         </p>
         <input
           ref={inputRef}
@@ -174,7 +200,7 @@ export function FileUpload({ meetingId }: { meetingId: string }) {
             >
               Войти заново
             </Link>
-          ) : (
+          ) : NO_RETRY.includes(state.reason) ? null : (
             <Button
               variant="secondary"
               className="min-h-11"

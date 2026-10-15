@@ -2,9 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { getUploadCredentials } from '@/app/meetings/[id]/actions';
-import { MAX_UPLOAD_BYTES } from '@/lib/upload';
+import { DEFAULT_MAX_UPLOAD_BYTES } from '@/lib/upload';
 import { FileUpload } from './file-upload';
 import { MeetingFiles } from './meeting-files';
+
+const MAX_UPLOAD_BYTES = DEFAULT_MAX_UPLOAD_BYTES;
 
 const refresh = vi.fn();
 vi.mock('@/app/meetings/[id]/actions', () => ({
@@ -71,7 +73,7 @@ const input = () => screen.getByLabelText('Файл для загрузки');
 
 describe('FileUpload: выбор файла', () => {
   it('выбор через input отправляет файл в api с JWT', async () => {
-    render(<FileUpload meetingId="m 1" />);
+    render(<FileUpload meetingId="m 1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await waitForXhr();
     expect(lastXhr().method).toBe('POST');
@@ -81,7 +83,7 @@ describe('FileUpload: выбор файла', () => {
   });
 
   it('drop одного файла запускает загрузку', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     fireEvent.drop(screen.getByTestId('drop-zone'), {
       dataTransfer: { files: [small()] },
     });
@@ -90,7 +92,7 @@ describe('FileUpload: выбор файла', () => {
   });
 
   it('несколько файлов не принимаются', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     fireEvent.drop(screen.getByTestId('drop-zone'), {
       dataTransfer: { files: [small(), small()] },
     });
@@ -101,14 +103,14 @@ describe('FileUpload: выбор файла', () => {
   });
 
   it('input не принимает несколько файлов', () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     expect(input()).not.toHaveAttribute('multiple');
   });
 });
 
 describe('FileUpload: лимит размера', () => {
   it('файл > 500 МБ не отправляется, сообщение видно', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     const big = new File(['x'], 'big.mkv');
     Object.defineProperty(big, 'size', { value: MAX_UPLOAD_BYTES + 1 });
     fireEvent.change(input(), { target: { files: [big] } });
@@ -120,7 +122,7 @@ describe('FileUpload: лимит размера', () => {
 
 describe('FileUpload: прогресс и отмена', () => {
   it('прогресс обновляется', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await waitForXhr();
     lastXhr().progress(50, 100);
@@ -129,7 +131,7 @@ describe('FileUpload: прогресс и отмена', () => {
   });
 
   it('отмена прерывает запрос, список не обновляется', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await waitForXhr();
     await userEvent.click(screen.getByRole('button', { name: 'Отменить' }));
@@ -143,7 +145,7 @@ describe('FileUpload: прогресс и отмена', () => {
     vi.mocked(getUploadCredentials).mockReturnValue(
       new Promise((r) => (release = r)),
     );
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await userEvent.click(screen.getByRole('button', { name: 'Отменить' }));
     release({ token: 't', apiUrl: 'http://api.test' });
@@ -154,15 +156,49 @@ describe('FileUpload: прогресс и отмена', () => {
 
 describe('FileUpload: ошибки и повтор', () => {
   it('413 показывает сообщение о лимите', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await waitForXhr();
     lastXhr().respond(413);
-    expect(await screen.findByRole('alert')).toHaveTextContent(/больше 500/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /больше допустимого/,
+    );
+  });
+
+  it('400/415: сообщение без кнопки «Повторить»', async () => {
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
+    await userEvent.upload(input(), small());
+    await waitForXhr();
+    lastXhr().respond(415);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'не принял файл',
+    );
+    expect(screen.queryByRole('button', { name: 'Повторить' })).toBeNull();
+  });
+
+  it('404: встреча не найдена, а не «нет доступа»', async () => {
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
+    await userEvent.upload(input(), small());
+    await waitForXhr();
+    lastXhr().respond(404);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Встреча не найдена',
+    );
+    expect(screen.queryByRole('button', { name: 'Повторить' })).toBeNull();
+  });
+
+  it('429 можно повторить', async () => {
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
+    await userEvent.upload(input(), small());
+    await waitForXhr();
+    lastXhr().respond(429);
+    expect(
+      await screen.findByRole('button', { name: 'Повторить' }),
+    ).toBeInTheDocument();
   });
 
   it('ошибка сети: сообщение, повтор отправляет файл заново, список обновляется один раз', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await waitForXhr();
     lastXhr().onerror?.();
@@ -180,7 +216,7 @@ describe('FileUpload: ошибки и повтор', () => {
   });
 
   it('5xx и 403 дают разные сообщения', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await waitForXhr();
     lastXhr().respond(500);
@@ -195,7 +231,7 @@ describe('FileUpload: ошибки и повтор', () => {
 
   it('истёкшая сессия: ссылка на вход вместо повтора', async () => {
     vi.mocked(getUploadCredentials).mockResolvedValue({ error: 'x' });
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Сессия истекла',
@@ -208,9 +244,35 @@ describe('FileUpload: ошибки и повтор', () => {
   });
 });
 
+describe('FileUpload: настраиваемый лимит', () => {
+  it('лимит берётся из props: текст и проверка', async () => {
+    render(<FileUpload meetingId="m1" maxBytes={1024} />);
+    expect(screen.getByText(/до 1 КБ/)).toBeInTheDocument();
+    fireEvent.change(input(), {
+      target: { files: [new File([new Uint8Array(2048)], 'a.bin')] },
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('больше 1 КБ');
+    expect(FakeXhr.instances).toHaveLength(0);
+  });
+});
+
+describe('FileUpload: уход со страницы', () => {
+  it('размонтирование прерывает запрос и не обновляет список', async () => {
+    const { unmount } = render(
+      <FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />,
+    );
+    await userEvent.upload(input(), small());
+    await waitForXhr();
+    unmount();
+    expect(lastXhr().aborted).toBe(true);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
 describe('FileUpload: успех и доступность', () => {
   it('после успеха список обновляется через router.refresh', async () => {
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.upload(input(), small());
     await waitForXhr();
     lastXhr().respond(201);
@@ -222,7 +284,7 @@ describe('FileUpload: успех и доступность', () => {
 
   it('кнопка выбора файла достижима с клавиатуры и открывает диалог', async () => {
     const click = vi.spyOn(HTMLInputElement.prototype, 'click');
-    render(<FileUpload meetingId="m1" />);
+    render(<FileUpload meetingId="m1" maxBytes={MAX_UPLOAD_BYTES} />);
     await userEvent.tab();
     const button = screen.getByRole('button', { name: 'Выбрать файл' });
     expect(button).toHaveFocus();
@@ -235,6 +297,7 @@ describe('FileUpload: успех и доступность', () => {
     render(
       <MeetingFiles
         meetingId="m1"
+        maxUploadBytes={MAX_UPLOAD_BYTES}
         result={{ ok: false, reason: 'forbidden' }}
       />,
     );

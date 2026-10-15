@@ -6,6 +6,7 @@ import { MeetingFiles } from '@/components/meeting-files';
 import { getMeetingFiles } from '@/lib/files';
 import { getMeeting } from '@/lib/meetings';
 import { formatDateTime } from '@/lib/format';
+import { parseMaxUploadBytes } from '@/lib/upload';
 
 async function MeetingContent({ params }: PageProps<'/meetings/[id]'>) {
   const { id } = await params;
@@ -26,7 +27,11 @@ async function MeetingContent({ params }: PageProps<'/meetings/[id]'>) {
           Участников: {meeting.participants.length}
         </p>
       </header>
-      <MeetingFiles meetingId={id} result={filesResult} />
+      <MeetingFiles
+        meetingId={id}
+        result={filesResult}
+        maxUploadBytes={parseMaxUploadBytes(process.env.MAX_UPLOAD_BYTES)}
+      />
     </>
   );
 }
