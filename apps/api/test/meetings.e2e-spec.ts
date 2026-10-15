@@ -21,10 +21,25 @@ describe('Meetings (e2e)', () => {
     return res.body.accessToken as string;
   };
 
-  const validMeeting = () => ({
+  // Пользователь с аккаунтом: токен, email и id (его можно звать на встречу).
+  const createUser = async () => {
+    const email = uniqueEmail();
+    const reg = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email, password: PASSWORD })
+      .expect(201);
+    const token = reg.body.accessToken as string;
+    const me = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    return { token, email, userId: me.body.id as string };
+  };
+
+  const validMeeting = (participants: string[] = []) => ({
     title: `Planning ${randomUUID()}`,
     date: '2030-01-15T10:00:00.000Z',
-    participants: ['alice@example.com', 'bob@example.com'],
+    participants,
   });
 
   const createMeeting = (token: string, body: Record<string, unknown>) =>
@@ -57,9 +72,11 @@ describe('Meetings (e2e)', () => {
   });
 
   describe('POST /meetings', () => {
-    it('создаёт встречу и возвращает её с id', async () => {
+    it('создаёт встречу, находя участников по email и сохраняя их id', async () => {
       const token = await createUserToken();
-      const body = validMeeting();
+      const alice = await createUser();
+      const bob = await createUser();
+      const body = validMeeting([alice.email, bob.email]);
 
       const res = await createMeeting(token, body).expect(201);
 
@@ -67,17 +84,61 @@ describe('Meetings (e2e)', () => {
         id: expect.any(String),
         title: body.title,
         date: body.date,
-        participants: body.participants,
+        participants: expect.arrayContaining([
+          { email: alice.email, userId: alice.userId },
+          { email: bob.email, userId: bob.userId },
+        ]),
       });
+      expect(res.body.participants).toHaveLength(2);
+    });
+
+    it('находит участника независимо от регистра email и не дублирует его', async () => {
+      const token = await createUserToken();
+      const alice = await createUser();
+
+      const res = await createMeeting(
+        token,
+        validMeeting([alice.email.toUpperCase(), alice.email]),
+      ).expect(201);
+
+      expect(res.body.participants).toEqual([
+        { email: alice.email, userId: alice.userId },
+      ]);
+    });
+
+    it('не добавляет владельца в участники, если он указал свой email', async () => {
+      const owner = await createUser();
+      const alice = await createUser();
+
+      const res = await createMeeting(
+        owner.token,
+        validMeeting([owner.email, alice.email]),
+      ).expect(201);
+
+      expect(res.body.participants).toEqual([
+        { email: alice.email, userId: alice.userId },
+      ]);
+    });
+
+    it('возвращает 400 и не создаёт встречу, если у участника нет аккаунта', async () => {
+      const token = await createUserToken();
+      const alice = await createUser();
+      const ghost = uniqueEmail();
+
+      const res = await createMeeting(
+        token,
+        validMeeting([alice.email, ghost]),
+      ).expect(400);
+
+      expect(res.body.message).toContain(ghost);
+      const list = await listMeetings(token).expect(200);
+      expect(list.body).toEqual([]);
     });
 
     it('создаёт встречу без участников, если передан пустой массив', async () => {
       const token = await createUserToken();
 
-      const res = await createMeeting(token, {
-        ...validMeeting(),
-        participants: [],
-      }).expect(201);
+      const res = await createMeeting(token, validMeeting([])).expect(201);
 
       expect(res.body.participants).toEqual([]);
     });
@@ -164,6 +225,20 @@ describe('Meetings (e2e)', () => {
       );
     });
 
+    it('возвращает встречи, на которые пользователь приглашён участником', async () => {
+      const owner = await createUserToken();
+      const participant = await createUser();
+      const invited = await createMeeting(
+        owner,
+        validMeeting([participant.email]),
+      ).expect(201);
+      await createMeeting(owner, validMeeting()).expect(201);
+
+      const res = await listMeetings(participant.token).expect(200);
+
+      expect(res.body).toEqual([invited.body]);
+    });
+
     it('не возвращает встречи других пользователей', async () => {
       const alice = await createUserToken();
       const bob = await createUserToken();
@@ -185,7 +260,8 @@ describe('Meetings (e2e)', () => {
   describe('GET /meetings/:id', () => {
     it('возвращает встречу по id', async () => {
       const token = await createUserToken();
-      const body = validMeeting();
+      const alice = await createUser();
+      const body = validMeeting([alice.email]);
       const created = await createMeeting(token, body).expect(201);
 
       const res = await getMeeting(token, created.body.id).expect(200);
@@ -194,8 +270,21 @@ describe('Meetings (e2e)', () => {
         id: created.body.id,
         title: body.title,
         date: body.date,
-        participants: body.participants,
+        participants: [{ email: alice.email, userId: alice.userId }],
       });
+    });
+
+    it('возвращает встречу участнику, а постороннему даёт 404', async () => {
+      const owner = await createUserToken();
+      const participant = await createUser();
+      const stranger = await createUserToken();
+      const created = await createMeeting(
+        owner,
+        validMeeting([participant.email]),
+      ).expect(201);
+
+      await getMeeting(participant.token, created.body.id).expect(200);
+      await getMeeting(stranger, created.body.id).expect(404);
     });
 
     it('возвращает 404, если встречи с таким id нет', async () => {

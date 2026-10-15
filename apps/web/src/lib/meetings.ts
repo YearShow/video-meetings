@@ -11,7 +11,7 @@ export interface Meeting {
   id: string;
   title: string;
   date: string;
-  participants: string[];
+  participants: { email: string; userId: string }[];
 }
 
 export const LOGIN_PATH = '/auth/login';
